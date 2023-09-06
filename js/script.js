@@ -1,10 +1,53 @@
-const global = {currentPage : window.location.pathname}
+const global = {
+  currentPage : window.location.pathname,
+  search: {
+    term:'',
+    type:'',
+    page:1,
+    totalPages:1
+  },
+  api:{
+    key:"7664905aed05be718462ca36381d0bd8",
+    url:"https://api.themoviedb.org/3/"
+  }
+}
 
+function init(){
+  switch(global.currentPage){
+      case '/':
+          case '/index.html':
+              displayMoviesSlider();
+              displayPopularMovies();
+          break;
+      case '/search.html':
+          search();
+          break;
+      case '/shows.html':
+          displayPopularShows()
+          break;
+      case '/movie-details.html':
+          displayMovieDetails();
+          break;
+      case '/tv-details.html':
+          displayShowDetails()
+          break;
+  }
+  highlightActiveLink();
+}
+
+async function fetchApiData(endpoint){
+  showSpinner();
+  const API_KEY = global.api.key;
+  const API_URL = global.api.url;
+  const response = await fetch(`${API_URL}${endpoint}?api_key=${API_KEY}&language=EN-US`);
+  const data = await response.json();
+  hideSpinner();
+  return data;
+}
 
 
 async function displayPopularMovies(){
     const {results} = await fetchApiData("movie/popular");
-    console.log(results)
     
     results.forEach( movie => {
         const div = document.createElement('div')
@@ -92,7 +135,6 @@ async function displayMovieDetails(){
 
 async function displayPopularShows(){
     const {results} = await fetchApiData("tv/popular");
-    console.log(results)
     
     results.forEach( show => {
         const div = document.createElement('div')
@@ -177,6 +219,35 @@ async function displayShowDetails(){
     document.querySelector('#show-details').appendChild(div)
 }
 
+async function search(){
+  const queryString = window.location.search;
+  const urlParams = new URLSearchParams(queryString);
+  global.search.type = urlParams.get('type');
+  global.search.term = urlParams.get('search-term');
+  if (global.search.term != '' && global.search.term != null){
+    const {page, results, total_pages} = await searchApi();
+    if (results.length === 0){
+      showAlert('No results found')
+      return;
+    }
+    displaySearchResults(results);
+  }else {
+    showAlert('Search query can\'t be empty','error')
+  }
+}
+
+async function searchApi(){
+  showSpinner();
+  const API_KEY = global.api.key;
+  const API_URL = global.api.url
+  const response = await fetch(`${API_URL}search/${global.search.type}?query=${global.search.term}&api_key=${API_KEY}&language=EN-US`);
+  const data = await response.json();
+  hideSpinner();
+  return data;
+}
+function displaySearchResults(){
+  
+}
 
 function addBackgroundImage(type,path){
     const div = document.createElement('div');
@@ -214,6 +285,8 @@ async function displayMoviesSlider(){
         `
         document.querySelector('.swiper-wrapper').appendChild(div);
         initSwiper();
+
+        console.log(-4+3+"8");
         
 
     })
@@ -239,15 +312,7 @@ function initSwiper(){
     });
 }
 
-async function fetchApiData(endpoint){
-    showSpinner();
-    const API_KEY = "7664905aed05be718462ca36381d0bd8";
-    const API_URL = "https://api.themoviedb.org/3/";
-    const response = await fetch(`${API_URL}${endpoint}?api_key=${API_KEY}&language=EN-US`);
-    const data = await response.json();
-    hideSpinner();
-    return data;
-}
+
 
 function showSpinner(){
     document.querySelector('.spinner').classList.add('show')
@@ -268,27 +333,12 @@ function highlightActiveLink(){
     )
 }
 
-function init(){
-    switch(global.currentPage){
-        case '/':
-            case '/index.html':
-                displayMoviesSlider();
-                displayPopularMovies();
-            break;
-        case '/search.html':
-            console.log("Search")
-            break;
-        case '/shows.html':
-            displayPopularShows()
-            break;
-        case '/movie-details.html':
-            displayMovieDetails();
-            break;
-        case '/tv-details.html':
-            displayShowDetails()
-            break;
-    }
-    highlightActiveLink();
+function showAlert(message, className ){
+  const alertBox = document.createElement('div');
+  alertBox.classList.add('alert',className);
+  alertBox.appendChild(document.createTextNode(message));
+  document.querySelector('#alert').appendChild(alertBox);
+  setTimeout(() => alertBox.remove(),3000)
 }
 
 document.addEventListener('DOMContentLoaded',init)
