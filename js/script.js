@@ -225,12 +225,19 @@ async function search(){
   global.search.type = urlParams.get('type');
   global.search.term = urlParams.get('search-term');
   if (global.search.term != '' && global.search.term != null){
-    const {page, results, total_pages} = await searchApi();
+    const {page, results, total_pages,total_results} = await searchApi();
     if (results.length === 0){
       showAlert('No results found')
       return;
     }
+    global.search.page = page;
+    global.search.totalPages = total_pages;
+    console.log(results)
+    document.querySelector('#search-results-heading').innerHTML=`
+    <h2>${results.length} results for ${total_results}</h2>
+    `
     displaySearchResults(results);
+    document.querySelector('#search-term').value='';
   }else {
     showAlert('Search query can\'t be empty','error')
   }
@@ -240,13 +247,91 @@ async function searchApi(){
   showSpinner();
   const API_KEY = global.api.key;
   const API_URL = global.api.url
-  const response = await fetch(`${API_URL}search/${global.search.type}?query=${global.search.term}&api_key=${API_KEY}&language=EN-US`);
+  const response = await fetch(`${API_URL}search/${global.search.type}?query=${global.search.term}&api_key=${API_KEY}&language=EN-US&page=${global.search.page}`);
   const data = await response.json();
   hideSpinner();
   return data;
 }
-function displaySearchResults(){
-  
+
+function displaySearchResults(results){
+
+  document.querySelector('#search-results').innerHTML =``
+  document.querySelector('#search-results-heading').innerHTML =``
+  document.querySelector('#pagination').innerHTML =``
+
+  const type = global.search.type;
+
+  results.forEach( result => {
+    let name = ""
+    let date = ""
+    if (type=="movie")
+    {
+      name = result.title;
+      date= "Release Date: "+result.release_date;
+    } else{
+      name = result.name
+      date = "Air Date: "+result.first_air_date
+    }
+
+    const div = document.createElement('div')
+    div.classList.add("card")
+    div.innerHTML = `
+    <a href="${type}-details.html?id=${result.id}">
+    ${
+        result.poster_path ? `<img
+        src="https://image.tmdb.org/t/p/w500${result.poster_path}"
+        class="card-img-top"
+        alt="${name}"
+      />` : `<img
+      src="../images/no-image.jpg"
+      class="card-img-top"
+      alt="${name}"
+    />`
+    }
+  </a>
+  <div class="card-body">
+    <h5 class="card-title">${name}</h5>
+    <p class="card-text">
+      <small class="text-muted">${date}</small>
+    </p>
+  </div>
+  `
+  document.querySelector('#search-results').appendChild(div)
+    }
+    );
+
+  displayPagination();
+}
+
+function displayPagination(){
+  const div = document.createElement('div');
+  div.classList.add('pagination')
+  div.innerHTML = `
+  <button class="btn btn-primary" id="prev">Prev</button>
+          <button class="btn btn-primary" id="next">Next</button>
+          <div class="page-counter">Page ${global.search.page} of ${global.search.totalPages}</div>
+  `
+  document.querySelector('#pagination').appendChild(div)
+
+
+  if (global.search.page === 1){
+    document.querySelector("#prev").disabled = true
+  }
+  if (global.search.page === global.search.totalPages){
+    document.querySelector("#next").disabled = true
+  }
+
+  // Display next Page
+  document.querySelector('#next').addEventListener('click', async () => {
+  global.search.page++;
+  const {results} = await searchApi();
+  displaySearchResults(results);
+  })
+  document.querySelector('#prev').addEventListener('click', async () => {
+    global.search.page--;
+    const {results} = await searchApi();
+    displaySearchResults(results);
+    })
 }
 
 function addBackgroundImage(type,path){
